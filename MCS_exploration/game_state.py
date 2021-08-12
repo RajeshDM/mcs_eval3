@@ -417,7 +417,6 @@ class GameState(object):
         action_creation_time = end_time_1 - t_start
         #print ("action creating time",action_creation_time)
         self.prev_world_state = self
-
         start_2 = time.time()
         self.event = self.env.step(action=action)
         end_2 = time.time()

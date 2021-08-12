@@ -362,6 +362,7 @@ def explore_initial_point(x,y, agent,obstacles):
 
 def explore_point(x, y, agent, obstacles):
     directions = 360 // 10
+    directions = 1
     camera_field_of_view = agent.game_state.event.camera_field_of_view
     #action = {'action':'RotateLook', 'horizon':1}
     #agent.game_state.step(action)

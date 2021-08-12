@@ -10,7 +10,11 @@ import machine_common_sense as mcs
 from MCS_exploration.gym_ai2thor.envs.trophy import set_goal_with_trophy
 import shutil
 import json
-
+import pathlib
+#directory_path = "/Users/rajesh/Rajesh/Subjects/Research/affordance_learning/mcs_eval3/"
+#directory_path = os.path.join(pathlib.Path(__file__).parent.parent.parent.parent.absolute(),"/")
+#directory_path = os.path.join(pathlib.Path(__file__).parent.parent.parent.parent.absolute(),"/")
+directory_path = str (pathlib.Path(__file__).parent.parent.parent.parent.absolute()) + "/"
 
 class McsEnv:
     """
@@ -21,20 +25,22 @@ class McsEnv:
         if platform.system() == "Linux":
             app = "unity_app/MCS-AI2-THOR-Unity-App-v0.3.5.x86_64"
         elif platform.system() == "Darwin":
-            app = "unity_app/MCSai2thor.app/Contents/MacOS/MCSai2thor"
+            app = directory_path + "unity_app/MCSai2thor.app/Contents/MacOS/MCSai2thor"
         else:
             app = None
 
+
+        task_dir = directory_path + task 
         self.trophy_config = None
         self.trophy_prob = None
         if set_trophy:
-            goal_dir = os.path.join(task, "eval3")
+            goal_dir = os.path.join(task_dir, "eval3")
             all_scenes = sorted(os.listdir(goal_dir))
             all_scenes = [os.path.join(goal_dir, one_scene) for one_scene in all_scenes]
-            print (len(all_scenes))
+            #print (len(all_scenes))
             assert len(all_scenes) == 1
             self.trophy_config, _ = mcs.load_config_json_file(all_scenes[0])
-            self.debug_dir = os.path.join(task, "debug")
+            self.debug_dir = os.path.join(task_dir, "debug")
             self.trophy_prob = trophy_prob
             try:
                 shutil.rmtree(self.debug_dir)
@@ -42,14 +48,15 @@ class McsEnv:
                 pass
             os.makedirs(self.debug_dir, exist_ok=True)
 
-        os.environ['MCS_CONFIG_FILE_PATH'] = os.path.join(os.getcwd(), "mcs_config.yaml")
+        #os.environ['MCS_CONFIG_FILE_PATH'] = os.path.join(os.getcwd(), "mcs_config.yaml")
+        os.environ['MCS_CONFIG_FILE_PATH'] = directory_path + "mcs_config.yaml"#os.path.join(os.getcwd(), "mcs_config.yaml")
 
         self.controller = mcs.create_controller(
             os.path.join(app)
         )
 
         if task and scene_type:
-            goal_dir = os.path.join(task, scene_type)
+            goal_dir = os.path.join(task_dir, scene_type)
             all_scenes = sorted(os.listdir(goal_dir))
             self.all_scenes = [os.path.join(goal_dir, one_scene) for one_scene in all_scenes]
         else:
@@ -95,7 +102,9 @@ class McsEnv:
             with open(os.path.join(self.debug_dir, 'box_trophy_{0:0=4d}.json'.format(self.current_scene)), 'w') as fp:
                 json.dump(self.scene_config, fp, indent=4)
 
+        #print (self.scene_config)
         self.step_output = self.controller.start_scene(self.scene_config)
+        #print (self.step_output.__dict__)
         # self.step_output = self.controller.step(action="Pass")
 
 

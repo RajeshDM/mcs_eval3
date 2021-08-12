@@ -8,6 +8,11 @@ from copy import deepcopy
 import json
 import matplotlib
 matplotlib.use('TkAgg')
+import pathlib
+import os
+#directory_path = "/Users/rajesh/Rajesh/Subjects/Research/affordance_learning/mcs_eval3/"
+#directory_path = os.path.join(pathlib.Path(__file__).parent.parent.parent.parent.absolute(),"/")
+directory_path = str (pathlib.Path(__file__).parent.parent.parent.parent.absolute()) + "/"
 
 AGENT_RADIUS = 0.27
 
@@ -102,7 +107,8 @@ def pre_process_objects(objects, all_obstacles, trophy_prob=1):
 
 class TrophyWithBox:
 
-    BOX_TROPHY_SIZE = json.load(open("interaction_scenes/box_trophy_size.json", "r"))
+    print ("directory path", directory_path)
+    BOX_TROPHY_SIZE = json.load(open(directory_path+ "interaction_scenes/box_trophy_size.json", "r"))
     RANDOM_ROTATE = [0, 90, 180, 270]
 
     def __init__(self, trophy, box, random_rotate=True):

@@ -1,4 +1,4 @@
-from tasks.point_goal_navigation.navigator import NavigatorResNet
+#from tasks.point_goal_navigation.navigator import NavigatorResNet
 from MCS_exploration.gym_ai2thor.envs.mcs_wrapper import McsWrapper
 import machine_common_sense
 import numpy as np
@@ -27,6 +27,7 @@ class McsNavWrapper(McsWrapper):
             for _ in range(n):
                 super().step(action="RotateLeft")
 
+    '''
     def micro_move(self, env, goal):
         current_x, current_z = env.step_output.position['x'], env.step_output.position['z']
         goal_x, _, goal_z = goal
@@ -38,7 +39,7 @@ class McsNavWrapper(McsWrapper):
             super().step(action='MoveAhead', amount=1)
             amount -= machine_common_sense.mcs_controller_ai2thor.MAX_MOVE_DISTANCE
         super().step(action='MoveAhead', amount=amount / machine_common_sense.mcs_controller_ai2thor.MAX_MOVE_DISTANCE)
-
+    '''
 
 
 

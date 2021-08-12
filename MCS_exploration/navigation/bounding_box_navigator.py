@@ -11,6 +11,7 @@ from shapely.geometry import Point, MultiPoint, LineString
 import numpy as np
 from descartes import PolygonPatch
 import constants
+from icecream import ic
 
 SHOW_ANIMATION = False
 LIMIT_STEPS = 350
@@ -97,7 +98,8 @@ class BoundingBoxNavigator:
 			return x_list, z_list
 
 		for obj in step_output.object_list:
-			if len(obj.dimensions) > 0 and obj.uuid not in self.scene_obstacles_dict and obj.visible:
+			#if len(obj.dimensions) > 0 and obj.uuid not in self.scene_obstacles_dict and obj.visible:
+			if len(obj.dimensions) > 0 and obj.uuid not in self.scene_obstacles_dict:
 				x_list, z_list = get_bd_point(obj.dimensions)
 				self.scene_obstacles_dict[obj.uuid] = ObstaclePolygon(x_list, z_list)
 				self.scene_obstacles_dict_roadmap[obj.uuid] = 0
@@ -192,6 +194,7 @@ class BoundingBoxNavigator:
 		self.epsilon = success_distance
 
 		gx, gy = goal_pose[0], goal_pose[1]
+		#ic(goal_pose)
 		for obstacle_key, obstacle in self.scene_obstacles_dict.items():
 			self.scene_obstacles_dict_roadmap[obstacle_key] = 0
 
@@ -257,6 +260,7 @@ class BoundingBoxNavigator:
 				
 			
 			#plot out the state if enabled
+			SHOW_ANIMATION = False
 			if SHOW_ANIMATION:
 				fov = FieldOfView([self.agentX, self.agentY, 0], 42.5 / 180.0 * math.pi, self.scene_obstacles_dict.values())
 				fov.agentX = self.agentX

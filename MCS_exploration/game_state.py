@@ -19,10 +19,10 @@ from MCS_exploration.obstacle import Obstacle
 import copy
 from vision.instSeg.inference import MaskAndClassPredictor
 from vision.instSeg.data.config_mcsVideo3_inter import MCSVIDEO_INTER_CLASSES_BG, MCSVIDEO_INTER_CLASSES_FG
+from icecream import ic
 
 TROPHY_INDEX = MCSVIDEO_INTER_CLASSES_FG.index('trophy') + 1
 BOX_INDEX = MCSVIDEO_INTER_CLASSES_FG.index('box') + 1
-
 
 import constants
 
@@ -131,9 +131,11 @@ class GameState(object):
         self.img_seg_occupancy_map_points = {}
         self.current_frame_img_obstacles = []
         self.img_channels = None
-        self.mask_predictor = MaskAndClassPredictor(dataset='mcsvideo3_inter',
-                                                   config='plus_resnet50_config_depth_MC',
-                                                   weights='./vision/instSeg/dvis_resnet50_mc.pth')
+        self.learnable_action_data = {}
+        self.prev_world_state = None
+        #self.mask_predictor = MaskAndClassPredictor(dataset='mcsvideo3_inter',
+        #                                           config='plus_resnet50_config_depth_MC',
+        #                                           weights='./vision/instSeg/dvis_resnet50_mc.pth')
 
     def occupancy_map_init(self):
         #rows = int(self.map_width//self.grid_size)
@@ -209,6 +211,7 @@ class GameState(object):
             self.img_seg_occupancy_map_points = {}
             self.current_frame_img_obstacles = []
             self.img_channels = None
+            self.prev_world_state = None
 
             #while True :
             #self.event = self.event.events[0]
@@ -251,7 +254,13 @@ class GameState(object):
                 tilt = self.event.head_tilt
                 self.pose_estimate =np.array([float(position['x']),float(position['z']),rotation]).reshape(3, 1)
 
+                #print (self.event.__dict__)
+                #ic (self.event.__dict__)
+
                 for elem in self.event.object_list:
+                    #ic (elem.uuid)
+                    #ic (elem.dimensions[4:])
+                    #ic (elem.position)
                     if self.event.goal.metadata['target']['id'] == elem.uuid :
                         self.goal_object = elem
             
@@ -270,6 +279,15 @@ class GameState(object):
                 poly = MultiPoint(sorted(bd_point)).convex_hull
                 x_list, z_list = poly.exterior.coords.xy
                 self.goal_bounding_box = ObstaclePolygon(x_list, z_list)
+
+                for obj in self.event.object_list:
+                    if obj.uuid not in self.discovered_explored and obj.visible:
+                        # print("uuid : ", obj.uuid)
+                        self.discovered_explored[obj.uuid] = {0: obj.position}
+                        self.discovered_objects.append(obj.__dict__)
+                        self.discovered_objects[-1]['locationParent'] = None
+                        self.discovered_objects[-1]['explored'] = 0
+                        self.discovered_objects[-1]['openable'] = None
 
             self.step_output = self.event
             if self.level == "level1" or self.level == "level2":
@@ -294,10 +312,12 @@ class GameState(object):
             #self.obj_mask = img_channels['net-mask']
             self.camera_height = self.event.camera_height
             #print ("starting tilt", self.event.head_tilt)
+            self.pose_estimate = np.array([self.event.position['x'],self.event.position['z'],math.radians(self.event.rotation)]).reshape(3,1)
             #self.pose_estimate = np.array([0,0,math.radians(self.event.rotation)]).reshape(3,1)
-            self.pose_estimate = np.array([0.0,0.0,0.0]).reshape(3,1)
+            #self.pose_estimate = np.array([0.0,0.0,0.0]).reshape(3,1)
             self.position = {'x': self.pose_estimate[0][0],'y': self.camera_height, 'z':self.pose_estimate[1][0]}
             self.rotation = math.degrees(self.pose_estimate[2][0])
+            print (self.position, self.rotation)
             self.head_tilt = self.event.head_tilt
             #print ("pose estimate from dead reckoning : ", self.position, self.rotation)
             #print ("Actual pose estimate from simulat : ", self.event.position, self.event.rotation)
@@ -319,7 +339,9 @@ class GameState(object):
                 self.global_obstacles = self.merge_obstacles(self.global_obstacles,"global")
                 #self.merge_global_obstacles()
                 self.update_goal_object_from_obstacle_prob()
-            self.add_obstacle_func(bounding_boxes)
+            #self.add_obstacle_func(bounding_boxes)
+            self.add_obstacle_func(self.event)
+            
             lastActionSuccess = self.event.return_status
 
         self.process_frame()
@@ -327,6 +349,7 @@ class GameState(object):
         #print ("end of reset in game state function")
 
     def step(self, action_or_ind):
+        current_action_to_save = False
         #print ("game state head tilt",self.head_tilt)
         #print ("event head tilt", self.event.head_tilt)
         self.new_found_objects = []
@@ -344,6 +367,12 @@ class GameState(object):
         # The object nearest the center of the screen is open/closed if none is provided.
         vel = 0
         ang_rate = 0
+        if action['action'] in constants.learnable_actions :
+            ic ("adding action to learnable action data")
+            current_action_to_save = True
+            action_str = action['action']
+            if   action_str not in self.learnable_action_data :
+                self.learnable_action_data[action_str] = []
 
         if action['action'] == 'RotateRight':
             action = "RotateLeft"
@@ -368,15 +397,17 @@ class GameState(object):
         elif action['action'] == 'OpenObject':
             #action = "OpenObject,objectId="+ str(action["objectId"])
             #print ("constructed action for open object", action)
-            action = "OpenObject,objectImageCoordsX="+str(int(action['x']))+",objectImageCoordsY="+str(int(action['y']))
+            action = "OpenObject,objectId=" + action["objectId"]
+            #action = "OpenObject,objectImageCoordsX="+str(int(action['x']))+",objectImageCoordsY="+str(int(action['y']))
         
         elif action['action'] == 'PickupObject':
-            #action = "PickupObject,objectId=" + str(action['objectId'])
-            action = "PickupObject,objectImageCoordsX="+str(int(action['x']))+",objectImageCoordsY="+str(int(action['y']))
+            action = "PickupObject,objectId=" + str(action['objectId'])
+            #action = "PickupObject,objectImageCoordsX="+str(int(action['x']))+",objectImageCoordsY="+str(int(action['y']))
         elif action['action'] == "DropObject" :
             action = "DropObject" 
         elif action['action'] == 'PickupObject':
             action = "PickupObject,objectId=" + str(action['objectId'])
+
 
         '''
         '''
@@ -385,6 +416,7 @@ class GameState(object):
         end_time_1 = time.time()
         action_creation_time = end_time_1 - t_start
         #print ("action creating time",action_creation_time)
+        self.prev_world_state = self
 
         start_2 = time.time()
         self.event = self.env.step(action=action)
@@ -396,6 +428,17 @@ class GameState(object):
                 if self.event.goal.metadata['target']['id'] == elem.uuid :
                     self.goal_object = elem
                     #self.goal_object_visible = elem.visible 
+
+            for obj in self.event.object_list :
+                if obj.uuid not in self.discovered_explored :
+                    # print ("uuid : ", obj.uuid)
+                    self.discovered_explored[obj.uuid] = {0:obj.position}
+                    self.discovered_objects.append(obj.__dict__)
+                    self.new_object_found = True
+                    self.new_found_objects.append(obj.__dict__)
+                    self.discovered_objects[-1]['explored'] = 0
+                    self.discovered_objects[-1]['locationParent'] = None
+                    self.discovered_objects[-1]['openable'] = None
 
         if self.level == "level1" or self.level == "level2":
             self.img_seg_occupancy_map_points = {}
@@ -413,6 +456,7 @@ class GameState(object):
         if self.event.return_status != "OBSTRUCTED":
             self.pose_estimate = self.motion_model(self.pose_estimate,agent_movement) 
         self.step_output = self.event
+        #print (self.event.position, self.event.rotation)
 
         if self.level == "level2" or self.level == "oracle":
             arr_mask = np.array(self.event.object_mask_list[-1])
@@ -425,6 +469,9 @@ class GameState(object):
 
         self.position = {'x': self.pose_estimate[0][0], 'y': self.camera_height, 'z':self.pose_estimate[1][0]}
         self.rotation = math.degrees(self.pose_estimate[2][0])
+        #print ("dead reckoning  :" , self.position, self.rotation)
+        #print ("Failed status : ",self.event.return_status )
+        #print ("actual position :", self.event.position, self.event.rotation)
         self.head_tilt = self.event.head_tilt
         start_time = time.time()
         bounding_boxes,current_frame_occupancy_points = convert_observation(self,self.number_actions,self.position,self.rotation) 
@@ -449,13 +496,20 @@ class GameState(object):
             self.global_obstacles = self.merge_obstacles(self.global_obstacles,"global")
             self.update_goal_object_from_obstacle_prob()
         #print ("time taken to update global obstacle list", time.time()-start_time)
-        self.add_obstacle_func(bounding_boxes)
+        #self.add_obstacle_func(bounding_boxes)
+        self.add_obstacle_func(self.event)
         
         if self.event.return_status :
             self.process_frame()
         else :
             pass
             #print ("Failed status : ",self.event.return_status )
+
+        #print (action)
+
+        #if action in constants.learnable_actions :
+        if current_action_to_save == True:
+            self.learnable_action_data[action_str].append((self.prev_world_state, self.event.return_status))
 
         #for obstacle1 in self.current_frame_obstacles:
         #    for obstacle2 in self.current_frame_obstacles:  

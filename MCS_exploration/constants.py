@@ -185,6 +185,7 @@ SCREEN_HEIGHT = 400
 #SCREEN_HEIGHT = 300
 CAMERA_HEIGHT_OFFSET = 0.75
 MAX_STEPS = 1000
+learnable_actions = ["OpenObject", "PickupObject"]
 
 ########################################################################################################################
 # Network hyperparameters

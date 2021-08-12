@@ -17,6 +17,7 @@ from MCS_exploration.navigation.visibility_road_map import ObstaclePolygon,Incre
 from shapely.geometry import Point, MultiPoint
 import operator
 from functools import reduce
+from icecream import ic
 
 class SequenceGenerator(object):
     def __init__(self,sess, env,level):
@@ -56,6 +57,49 @@ class SequenceGenerator(object):
         cover_floor.explore_initial_point(self.agent.game_state.position['x'],self.agent.game_state.position['z'],self.agent,self.agent.nav.scene_obstacles_dict.values())
         #exploration_routine = cover_floor.flood_fill(0,0, cover_floor.check_validity)
 
+        return
+        '''
+        new_end_point = []
+        #x = 1.27710210179164
+        #z = -3.678490471926941
+        x = 0.0694278553
+        z = 0.8100229
+        new_end_point.append(x)
+        new_end_point.append(z)
+        nav_success = self.agent.nav.go_to_goal(new_end_point, self.agent, success_distance)
+        ic (nav_success)
+        for obj in self.agent.game_state.discovered_objects:
+            #ic(obj)
+            if obj['uuid'] == "red_cube":
+                #obj_centre = obj.position
+                target_obj = obj
+                break
+        goal_object_centre = [0]*3
+        goal_object_centre[0] = target_obj['position']['x']
+        goal_object_centre[1] = target_obj['position']['y']
+        goal_object_centre[2] = target_obj['position']['z']
+
+        self.face_obj_2(goal_object_centre)
+        ic (goal_object_centre)
+        
+        action = {'action':"PickupObject","objectId":"red_cube" }
+        self.agent.game_state.step(action)
+        ic (self.event.return_status)
+        self.look_straight()
+
+        x = 2
+        z = 4
+        new_end_point = []
+        new_end_point.append(x)
+        new_end_point.append(z)
+        nav_success = self.agent.nav.go_to_goal(new_end_point, self.agent, success_distance)
+        ic (nav_success)
+        action = {'action':'DropObject'}
+        self.agent.game_state.step(action)
+        self.look_straight()
+        
+        return
+        '''
         self.outermost_poly = None
 
         all_coords = []
@@ -107,11 +151,16 @@ class SequenceGenerator(object):
 
         if self.agent.game_state.trophy_picked_up == True:
             return
+
+        self.explore_all_objects()
     
         overall_area = 102
         pose = game_util.get_pose(self.game_state)[:3]
         #print ("overall area",overall_area)
         #print (" poly area " , self.agent.game_state.world_poly.area)
+
+        #return
+
         while overall_area * 0.85 >  self.agent.game_state.world_poly.area or len(self.agent.game_state.global_obstacles) == 0 :
             #print ("In the main for loop of executtion")
             points_checked = 0
@@ -401,6 +450,36 @@ class SequenceGenerator(object):
             for _ in range(m):
                 self.agent.game_state.step(action)
 
+    def face_obj_2 (self,goal_object_centre):
+        theta = - get_polar_direction(goal_object_centre, self.agent.game_state) * 180/math.pi
+        omega = get_head_tilt(goal_object_centre, self.agent.game_state) - self.agent.game_state.head_tilt
+
+        n = int(abs(theta) // 10)
+        m = int(abs(omega) // 10)
+
+        #print ("Theta", theta)
+        #print ("Omega", omega)
+        if theta > 0:
+            #action = {'action': 'RotateRight'}
+            action = {'action': 'RotateLeft'}
+            for _ in range(n):
+                self.agent.game_state.step(action)
+        else:
+            action = {'action': 'RotateRight'}
+            #action = {'action': 'RotateLeft'}
+            for _ in range(n):
+                self.agent.game_state.step(action)
+
+        if omega > 0:
+            action = {'action': 'LookDown'}
+            for _ in range(m):
+                self.agent.game_state.step(action)
+        else:
+            action = {'action': 'LookUp'}
+            for _ in range(m):
+                self.agent.game_state.step(action)
+
+
     def look_straight(self):
         omega = self.agent.game_state.event.head_tilt
 
@@ -556,10 +635,6 @@ class SequenceGenerator(object):
 
         return False
                 
-        
-        
-
-
     def update_opened_up(self,target_obj):          
         for i,obstacle in enumerate(self.agent.game_state.global_obstacles) :
             if target_obj.id == obstacle.id :
@@ -590,6 +665,32 @@ class SequenceGenerator(object):
                     self.pick_up_obstacles(possible_trophy_obstacles=True)
                     return 
                 self.look_straight()
+
+    def explore_all_objects_all_actions(self):
+        action_list = ""
+        for i,obstacle in enumerate(self.agent.game_state.global_obstacles) :
+            for action in action_list :
+               self.go_to_object_and_act(action)
+               #self.agent.game_state.step(action) 
+
+    def go_to_objetc_and_act(self,action):
+        object_nearest_point = self.get_best_object_point(target_obj, 1000, self.nearest)
+        object_farthest_point = self.get_best_object_point(target_obj, 0.0 , self.farthest)
+
+        if object_nearest_point == None :
+            return
+
+        success_distance = 0.35 
+        nav_success = self.agent.nav.go_to_goal(object_nearest_point, self.agent, success_distance) 
+        self.face_object(target_obj)
+
+        x,y = self.get_obj_pixels (target_obj)
+        
+        if x == None or y == None :
+            return
+        action_dict = {'action':action, 'x': x, 'y':y}
+        self.agent.game_state.step(action_dict)
+        
 
     def pick_up_obstacles(self,obstacle_ids=None,all_obstacles=False,possible_trophy_obstacles=False):
 

@@ -134,8 +134,9 @@ class McsHumanControlEnv(McsEnv):
 
 
 if __name__ == '__main__':
-    start_scene_number = 0
-    env = McsHumanControlEnv(task="interaction_scenes", scene_type="eval3", start_scene_number=start_scene_number, frame_collector=None)
+    start_scene_number = 1
+    #env = McsHumanControlEnv(task="interaction_scenes", scene_type="eval3", start_scene_number=start_scene_number, frame_collector=None)
+    env = McsHumanControlEnv(task="interaction_scenes", scene_type="debug", start_scene_number=start_scene_number, frame_collector=None)
     env.reset()
 
     while True:
@@ -167,6 +168,10 @@ if __name__ == '__main__':
         elif action == "U":
             x, y = input("Pickup Object! Enter the object x and y coord on 2D image separated by space:").split()
             env.step("PickupObject", objectImageCoordsX=int(x),  objectImageCoordsY=int(y))
+        elif action == "UP":
+            #x, y = input("Pickup Object! Enter the object x and y coord on 2D image separated by space:").split()
+            pickup_id = input ("Pickup object. Entrer ID for pickup: ")
+            env.step("PickupObject", objectId=pickup_id)
         elif action == "I":
             x, y = input("Put Object! Enter the receptacle x and y coord on 2D image separated by space:").split()
             env.step("PutObject", objectImageCoordsX=int(x),  objectImageCoordsY=int(y))

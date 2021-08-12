@@ -4,12 +4,14 @@ from MCS_exploration.frame_collector import Frame_collector
 import sys
 import yaml
 import os
+directory_path = "/Users/rajesh/Rajesh/Subjects/Research/affordance_learning/mcs_eval3/"
 
-DEBUG = False
+DEBUG = True
 
 if __name__ == "__main__":
-    start_scene_number = 2
-    with open("./mcs_config.yaml", 'r') as config_file:
+    start_scene_number = 5
+    #with open("./mcs_config.yaml", 'r') as config_file:
+    with open(directory_path + "mcs_config.yaml", 'r') as config_file:
         config = yaml.safe_load(config_file)
     level = config['metadata']
     collector = Frame_collector(scene_dir="simple_task_img", start_scene_number=start_scene_number)
@@ -79,7 +81,7 @@ if __name__ == "__main__":
         #        str(number_tasks_success)+",exploration success until now,"+ str(exploration_success)  +"\n")
         #f.close()
         #print ("scene number completed = ", env.current_scene)
-        #break
+        break
 
     #print ("Number tasks attempted" , number_tasks_attempted)
     print ("Total Success envs", number_tasks_success)
